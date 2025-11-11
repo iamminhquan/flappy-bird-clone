@@ -1,27 +1,11 @@
 from __future__ import annotations
-
+from typing import List
 
 import random
 import sys
 import pygame
 
-
-# Screen size and FPS Limits
-FPS: float = 60.0
-SCREEN_WIDTH: int = 800
-SCREEN_HEIGHT: int = 600
-MAX_PIPE_HEIGHT: int = 100
-PIPE_WIDTH: int = 80
-BUTTON_WIDTH: int = 220
-BUTTON_HEIGHT: int = 60
-BUTTON_SPACING: int = 20
-
-# Colors
-RED: tuple[int] = (255, 0, 0)
-GREEN: tuple[int] = (0, 255, 0)
-BLUE: tuple[int] = (0, 0, 255)
-BLACK: tuple[int] = (0, 0, 0)
-WHITE: tuple[int] = (255, 255, 255)
+import constants
 
 
 # Game states
@@ -36,18 +20,18 @@ class GameState:
 # Score system
 class ScoreManager:
     def __init__(self):
-        self.score = 0
-        self.high_score = 0
+        self.__score = 0
+        self.__high_score = 0
 
-    def increment_score(self):
-        self.score += 1
+    def increment_score(self: ScoreManager):
+        self.__score += 1
 
-    def reset_score(self):
-        self.score = 0
+    def reset_score(self: ScoreManager):
+        self.__score = 0
 
-    def update_high_score(self):
-        if self.score > self.high_score:
-            self.high_score = self.score
+    def update_high_score(self: ScoreManager):
+        if self.__score > self.__high_score:
+            self.__high_score = self.__score
 
 
 class Bird(pygame.sprite.Sprite):
@@ -75,9 +59,9 @@ class Bird(pygame.sprite.Sprite):
         self.__surface = surface
 
         # Set up the sprite's rect for collision detection
-        self.rect = self.__surface.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.__rect = self.__surface.get_rect()
+        self.__rect.x = x
+        self.__rect.y = y
 
     def movement(self: Bird) -> None:
         """
@@ -91,8 +75,8 @@ class Bird(pygame.sprite.Sprite):
         self.__y += self.__velocity
 
         # Prevent bird from falling below the screen
-        if self.__y + self.__surface.get_height() >= SCREEN_HEIGHT:
-            self.__y = SCREEN_HEIGHT - self.__surface.get_height()
+        if self.__y + self.__surface.get_height() >= constants.constants.SCREEN_HEIGHT:
+            self.__y = constants.constants.SCREEN_HEIGHT - self.__surface.get_height()
             self.__velocity = 0.0
 
         # Prevent bird from going above the screen
@@ -148,7 +132,7 @@ class Pipe(pygame.sprite.Sprite):
         width: float,
         height: float,
         speed: float,
-        color: tuple[int] = GREEN,
+        color: List[int] = constants.GREEN,
     ) -> None:
         """
         Initialize a pipe.
@@ -163,9 +147,9 @@ class Pipe(pygame.sprite.Sprite):
         """
         super().__init__()
         self.__x = x
-        self.__y = y
-        self.__width = width
-        self.__height = height
+        # self.__y = y
+        # self.__width = width
+        # self.__height = height
         self.__speed = speed
         self.__color = color
 
@@ -210,7 +194,7 @@ class PipePair:
         width: float,
         gap: float,
         speed: float,
-        color: tuple[int] = GREEN,
+        color: List[int] = constants.GREEN,
     ) -> None:
         """
         Initialize a pipe pair.
@@ -230,11 +214,14 @@ class PipePair:
 
         # Randomize the height of the top pipe
         self.__top_pipe_height = random.randint(
-            MAX_PIPE_HEIGHT, SCREEN_HEIGHT - self.__gap - MAX_PIPE_HEIGHT
+            constants.PIPE_HEIGHT,
+            constants.SCREEN_HEIGHT - self.__gap - constants.PIPE_HEIGHT,
         )
 
         # Calculate the bottom pipe height
-        self.__bottom_pipe_height = SCREEN_HEIGHT - self.__gap - self.__top_pipe_height
+        self.__bottom_pipe_height = (
+            constants.SCREEN_HEIGHT - self.__gap - self.__top_pipe_height
+        )
 
         # Create Pipe sprites for collision detection
         self.top_pipe = Pipe(
@@ -245,6 +232,7 @@ class PipePair:
             self.__speed,
             self.__color,
         )
+
         self.bottom_pipe = Pipe(
             self.__x,
             self.__top_pipe_height + self.__gap,
@@ -281,7 +269,7 @@ class PipePair:
         return self.top_pipe, self.bottom_pipe
 
 
-class PipeManager(object):
+class PipeManager:
     """
     Manages the lifecycle of pipe pairs: initial spawn, updates, drawing,
     and respawning when pipes leave the screen.
@@ -412,18 +400,18 @@ def draw_score(screen: pygame.Surface, score_manager: ScoreManager) -> None:
 
     try:
         font = pygame.font.SysFont("arial", 36)
-    except:
+    except:  # noqa: E722
         try:
             font = pygame.font.Font(None, 36)
-        except:
+        except:  # noqa: E722
             font = None
 
     if font:
-        score_text = font.render(f"Score: {score_manager.score}", True, BLACK)
+        score_text = font.render(f"Score: {score_manager.score}", True, constants.BLACK)
         screen.blit(score_text, (20, 20))
     else:
         # Draw simple score indicator if font fails
-        pygame.draw.rect(screen, BLACK, (20, 20, 100, 30))
+        pygame.draw.rect(screen, constants.BLACK, (20, 20, 100, 30))
 
 
 def check_collisions(bird: Bird, pipe_manager: PipeManager) -> bool:
@@ -456,9 +444,9 @@ def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> 
         score_manager (ScoreManager): The score manager containing final score.
     """
     # Semi-transparent overlay to dim the background but keep consistency in button style
-    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    overlay = pygame.Surface((SCREEN_WIDTH, constants.SCREEN_HEIGHT))
     overlay.set_alpha(128)
-    overlay.fill(BLACK)
+    overlay.fill(constants.BLACK)
     screen.blit(overlay, (0, 0))
 
     # Initialize font module if not already done
@@ -478,14 +466,14 @@ def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> 
     if font:
         game_over_text = font.render("GAME OVER", True, RED)
         text_rect = game_over_text.get_rect(
-            center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 150)
+            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 150)
         )
         screen.blit(game_over_text, text_rect)
 
         # Final score text
         score_text = font.render(f"Final Score: {score_manager.score}", True, WHITE)
         score_rect = score_text.get_rect(
-            center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80)
+            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 80)
         )
         screen.blit(score_text, score_rect)
 
@@ -494,19 +482,25 @@ def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> 
             f"High Score: {score_manager.high_score}", True, WHITE
         )
         high_score_rect = high_score_text.get_rect(
-            center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 20)
+            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 20)
         )
         screen.blit(high_score_text, high_score_rect)
     else:
         # Draw simple text using basic shapes if font fails
         pygame.draw.rect(
-            screen, RED, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 200, 300, 50)
+            screen,
+            RED,
+            (SCREEN_WIDTH // 2 - 150, constants.SCREEN_HEIGHT // 2 - 200, 300, 50),
         )
         pygame.draw.rect(
-            screen, WHITE, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 130, 300, 50)
+            screen,
+            WHITE,
+            (SCREEN_WIDTH // 2 - 150, constants.SCREEN_HEIGHT // 2 - 130, 300, 50),
         )
         pygame.draw.rect(
-            screen, WHITE, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 70, 300, 50)
+            screen,
+            WHITE,
+            (SCREEN_WIDTH // 2 - 150, constants.SCREEN_HEIGHT // 2 - 70, 300, 50),
         )
 
     # Buttons (consistent with main menu style)
@@ -563,9 +557,9 @@ def _get_menu_button_rects() -> dict[str, pygame.Rect]:
         dict[str, pygame.Rect]: Mapping of button name to its rectangle.
     """
     center_x: int = SCREEN_WIDTH // 2
-    start_y: int = SCREEN_HEIGHT // 2 - BUTTON_HEIGHT // 2
+    start_y: int = constants.SCREEN_HEIGHT // 2 - BUTTON_HEIGHT // 2
     total_height: int = BUTTON_HEIGHT * 2 + BUTTON_SPACING
-    origin_y: int = SCREEN_HEIGHT // 2 - total_height // 2
+    origin_y: int = constants.SCREEN_HEIGHT // 2 - total_height // 2
     start_button_rect = pygame.Rect(
         center_x - BUTTON_WIDTH // 2,
         origin_y,
@@ -598,9 +592,9 @@ def draw_main_menu(screen: pygame.Surface) -> None:
             title_font = None
 
     if title_font:
-        title_text = title_font.render("Flappy Bird", True, BLACK)
+        title_text = title_font.render("Flappy Bird", True, constants.BLACK)
         title_rect = title_text.get_rect(
-            center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 140)
+            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 140)
         )
         screen.blit(title_text, title_rect)
 
@@ -633,7 +627,7 @@ def draw_main_menu(screen: pygame.Surface) -> None:
 
 def _get_confirm_exit_button_rects() -> dict[str, pygame.Rect]:
     center_x: int = SCREEN_WIDTH // 2
-    origin_y: int = SCREEN_HEIGHT // 2 + 30
+    origin_y: int = constants.SCREEN_HEIGHT // 2 + 30
     yes_rect = pygame.Rect(
         center_x - BUTTON_WIDTH - BUTTON_SPACING // 2,
         origin_y,
@@ -648,7 +642,7 @@ def _get_confirm_exit_button_rects() -> dict[str, pygame.Rect]:
 
 def draw_confirm_exit(screen: pygame.Surface) -> None:
     # modal overlay
-    modal = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    modal = pygame.Surface((SCREEN_WIDTH, constants.SCREEN_HEIGHT))
     modal.set_alpha(180)
     modal.fill((0, 0, 0))
     screen.blit(modal, (0, 0))
@@ -668,7 +662,7 @@ def draw_confirm_exit(screen: pygame.Surface) -> None:
         msg = "Are you sure you want to exit?"
         title_text = title_font.render(msg, True, WHITE)
         title_rect = title_text.get_rect(
-            center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
+            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 40)
         )
         screen.blit(title_text, title_rect)
 
@@ -723,7 +717,7 @@ def _get_game_over_button_rects() -> dict[str, pygame.Rect]:
     """
     center_x: int = SCREEN_WIDTH // 2
     # Place buttons below the score block
-    origin_y: int = SCREEN_HEIGHT // 2 + 30
+    origin_y: int = constants.SCREEN_HEIGHT // 2 + 30
     restart_rect = pygame.Rect(
         center_x - BUTTON_WIDTH // 2,
         origin_y,
@@ -908,7 +902,9 @@ def main() -> None:
 
     running: bool = True
 
-    screen: pygame.Surface = pygame.display.set_mode([SCREEN_WIDTH, SCREEN_HEIGHT])
+    screen: pygame.Surface = pygame.display.set_mode(
+        [SCREEN_WIDTH, constants.SCREEN_HEIGHT]
+    )
     pygame.display.set_caption("Flappy Bird")
 
     clock: pygame.time.Clock = pygame.time.Clock()
@@ -917,8 +913,10 @@ def main() -> None:
 
     # Bird surface
     bird_surface: pygame.Surface = pygame.Surface([BIRD_SIZE, BIRD_SIZE])
-    bird_surface.fill(BLACK)
-    pygame.draw.circle(bird_surface, GREEN, [BIRD_SIZE // 2, BIRD_SIZE // 2], 20)
+    bird_surface.fill(constants.BLACK)
+    pygame.draw.circle(
+        bird_surface, constants.GREEN, [BIRD_SIZE // 2, BIRD_SIZE // 2], 20
+    )
 
     pipe_manager: PipeManager = PipeManager(
         gap=200, pipe_width=80, speed=4, spawn_distance=300
