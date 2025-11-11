@@ -5,7 +5,9 @@ import pygame
 
 import constants
 from entities import bird
-from entities.pipe_manager import PipeManager
+from managers.game_manager import check_collisions, reset_game
+from managers.pipe_manager import PipeManager
+from managers.score_manager import ScoreManager
 
 
 # Game states
@@ -15,31 +17,6 @@ class GameState:
     GAME_OVER = "game_over"
     CONFIRM_EXIT_MENU = "confirm_exit_menu"
     CONFIRM_EXIT_GAME_OVER = "confirm_exit_game_over"
-
-
-# Score system
-class ScoreManager:
-    def __init__(self):
-        self.__score = 0
-        self.__high_score = 0
-
-    def increment_score(self: ScoreManager):
-        self.__score += 1
-
-    def reset_score(self: ScoreManager):
-        self.__score = 0
-
-    def update_high_score(self: ScoreManager):
-        if self.__score > self.__high_score:
-            self.__high_score = self.__score
-
-    @property
-    def score(self: "ScoreManager") -> int:
-        return self.__score
-
-    @property
-    def high_score(self: "ScoreManager") -> int:
-        return self.__high_score
 
 
 def draw_score(screen: pygame.Surface, score_manager: ScoreManager) -> None:
@@ -68,27 +45,6 @@ def draw_score(screen: pygame.Surface, score_manager: ScoreManager) -> None:
     else:
         # Draw simple score indicator if font fails
         pygame.draw.rect(screen, constants.BLACK, (20, 20, 100, 30))
-
-
-def check_collisions(bird: bird.Bird, pipe_manager: PipeManager) -> bool:
-    """
-    Check for collisions between the bird and any pipes.
-
-    Args:
-        bird (Bird): The bird sprite to check collisions for.
-        pipe_manager (PipeManager): Manager containing all pipe sprites.
-
-    Returns:
-        bool: True if collision detected, False otherwise.
-    """
-    # Get all pipe sprites
-    pipe_sprites = pipe_manager.get_all_pipe_sprites()
-
-    # Check for collision using pygame's sprite collision detection
-    if pygame.sprite.spritecollideany(bird, pygame.sprite.Group(pipe_sprites)):
-        return True
-
-    return False
 
 
 def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> None:
@@ -445,106 +401,48 @@ def handle_confirm_exit_input(events: list[pygame.event.Event]) -> str:
     return "none"
 
 
-def reset_game(
-    bird: bird.Bird, pipe_manager: PipeManager, score_manager: ScoreManager
-) -> None:
-    """
-    Reset the game to initial state.
-
-    Args:
-        bird (Bird): The bird object to reset.
-        pipe_manager (PipeManager): The pipe manager to reset.
-        score_manager (ScoreManager): The score manager to reset.
-    """
-    # Reset bird position and velocity
-    bird.reset(70, 90)
-
-    # Reset pipe manager using its reset method
-    pipe_manager.reset()
-
-    # Reset score
-    score_manager.reset_score()
-
-
 def draw_window(
     screen: pygame.Surface,
     pipe_manager: PipeManager,
     game_state: str = GameState.PLAYING,
-    score_manager: ScoreManager = None,
+    score_manager: ScoreManager | None = None,
 ) -> None:
-    """
-    Render and present the current frame of the game.
-
-    Fills the background, draws pipes first so the bird appears on top, then draws
-    the bird and flips the display buffer.
-
-    Args:
-        screen (pygame.Surface): The main display surface.
-        pipe_manager (PipeManager): Manager responsible for drawing all pipes.
-        game_state (str): Current state of the game.
-        score_manager (ScoreManager): Score manager for displaying score.
-    """
-    # Fill the screen with background
+    """Render the current frame based on game state."""
     screen.fill(constants.WHITE)
 
-    # Main menu draws its own UI; skip game world drawing
     if game_state == GameState.MENU:
         draw_main_menu(screen)
     elif game_state == GameState.CONFIRM_EXIT_MENU:
         draw_main_menu(screen)
         draw_confirm_exit(screen)
     else:
-        # Draw pipes first so the bird appears on top
         pipe_manager.draw(screen)
-
-        # Draw bird to the screen
         bird.draw(screen)
 
-        # Draw score during gameplay
         if game_state == GameState.PLAYING and score_manager:
             draw_score(screen, score_manager)
 
-        # Draw game over menu if game is over
         if game_state == GameState.GAME_OVER and score_manager:
             draw_game_over_menu(screen, score_manager)
         elif game_state == GameState.CONFIRM_EXIT_GAME_OVER and score_manager:
             draw_game_over_menu(screen, score_manager)
             draw_confirm_exit(screen)
 
-    # Update the screen
     pygame.display.flip()
 
 
+
 def handle_events(events: list[pygame.event.Event]) -> bool:
-    """
-    Process a batch of Pygame events (including quit events).
-
-    Iterates through the received events; returns False to terminate the game loop
-    if a QUIT event is encounteconstants.RED, otherwise returns True to continue.
-
-    Args:
-        events (list[pygame.event.Event]): Events to process.
-
-    Returns:
-        bool: False if quit requested; True to continue running.
-    """
+    """Return False if a QUIT event is processed."""
     for event in events:
         if event.type == pygame.QUIT:
             return False
-
     return True
 
 
+
 def handle_keys_pressed_events(keys_pressed: pygame.key.ScancodeWrapper) -> None:
-    """
-    Handle keyboard state each frame.
-
-    - ESC: exit the program immediately.
-    - SPACE: make the bird jump.
-
-    Args:
-        keys_pressed (pygame.key.ScancodeWrapper): Pressed state of all keys.
-    """
+    """Handle per-frame keyboard state (escape to quit, space to jump)."""
     if keys_pressed[pygame.K_ESCAPE]:
         sys.exit(1)
 
