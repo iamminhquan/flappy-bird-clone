@@ -6,6 +6,7 @@ import sys
 import pygame
 
 import constants
+import bird
 
 
 # Game states
@@ -33,89 +34,13 @@ class ScoreManager:
         if self.__score > self.__high_score:
             self.__high_score = self.__score
 
-
-class Bird(pygame.sprite.Sprite):
-    """
-    Represents the bird character in the game.
-
-    Inherits from pygame.sprite.Sprite for collision detection.
-    """
-
-    def __init__(self: Bird, x: int, y: int, surface: pygame.Surface) -> None:
-        """
-        Initialize a bird instance.
-
-        Args:
-            x (int): Initial x coordinate in pixels.
-            y (int): Initial y coordinate in pixels.
-            surface (pygame.Surface): Surface used to render the bird.
-        """
-        super().__init__()
-        self.__x = x
-        self.__y = y
-        self.__velocity = 0.0
-        self.__gravity = 0.5
-        self.__jump_force = -7.0
-        self.__surface = surface
-
-        # Set up the sprite's rect for collision detection
-        self.__rect = self.__surface.get_rect()
-        self.__rect.x = x
-        self.__rect.y = y
-
-    def movement(self: Bird) -> None:
-        """
-        Update per-frame movement:
-        - Apply gravity to velocity.
-        - Update position by current velocity.
-        - Clamp the bird within the top and bottom screen bounds.
-        - Update the sprite's rect position.
-        """
-        self.__velocity += self.__gravity
-        self.__y += self.__velocity
-
-        # Prevent bird from falling below the screen
-        if self.__y + self.__surface.get_height() >= constants.constants.SCREEN_HEIGHT:
-            self.__y = constants.constants.SCREEN_HEIGHT - self.__surface.get_height()
-            self.__velocity = 0.0
-
-        # Prevent bird from going above the screen
-        if self.__y <= 0:
-            self.__y = 0
-
-        # Update the sprite's rect position
-        self.rect.x = self.__x
-        self.rect.y = self.__y
-
-    def jump(self: Bird) -> None:
-        """
-        Trigger a jump by setting vertical velocity to a negative impulse.
-        """
-        self.__velocity = self.__jump_force
-
-    def draw(self: Bird, screen: pygame.Surface) -> None:
-        """
-        Render the bird at its current position.
-
-        Args:
-            screen (pygame.Surface): The main display surface.
-        """
-        screen.blit(self.__surface, [self.__x, self.__y])
+    @property
+    def score(self: "ScoreManager") -> int:
+        return self.__score
 
     @property
-    def x(self: Bird) -> float:
-        """Return the current x coordinate in pixels."""
-        return self.__x
-
-    @property
-    def y(self: Bird) -> float:
-        """Return the current y coordinate in pixels."""
-        return self.__y
-
-    @property
-    def velocity(self: Bird) -> float:
-        """Return the current vertical velocity in pixels per frame."""
-        return self.__velocity
+    def high_score(self: "ScoreManager") -> int:
+        return self.__high_score
 
 
 class Pipe(pygame.sprite.Sprite):
@@ -176,7 +101,7 @@ class Pipe(pygame.sprite.Sprite):
         pygame.draw.rect(screen, self.__color, self.rect)
 
     @property
-    def speed(self: float) -> float:
+    def speed(self: "Pipe") -> float:
         """Return the current leftward speed in pixels per frame."""
         return self.__speed
 
@@ -299,7 +224,7 @@ class PipeManager:
         self.__frames_since_last_spawn: int = 0
 
         # Spawn initial pipes off-screen to the right with even spacing
-        start_x: int = SCREEN_WIDTH + 100
+        start_x: int = constants.SCREEN_WIDTH + 100
         initial_count: int = 3
         for i in range(initial_count):
             self.__pipes.append(
@@ -331,7 +256,9 @@ class PipeManager:
             and self.__pipes
         ):
             last_x: int = self.__pipes[-1].top_pipe.rect.x
-            new_x: int = max(last_x + self.__spawn_distance, SCREEN_WIDTH + 100)
+            new_x: int = max(
+                last_x + self.__spawn_distance, constants.SCREEN_WIDTH + 100
+            )
             self.__pipes.append(
                 PipePair(new_x, self.__pipe_width, self.__gap, self.__speed)
             )
@@ -373,7 +300,7 @@ class PipeManager:
         self.__frames_since_last_spawn = 0
 
         # Spawn initial pipes
-        start_x: int = SCREEN_WIDTH + 100
+        start_x: int = constants.SCREEN_WIDTH + 100
         initial_count: int = 3
         for i in range(initial_count):
             self.__pipes.append(
@@ -400,10 +327,10 @@ def draw_score(screen: pygame.Surface, score_manager: ScoreManager) -> None:
 
     try:
         font = pygame.font.SysFont("arial", 36)
-    except:  # noqa: E722
+    except:
         try:
             font = pygame.font.Font(None, 36)
-        except:  # noqa: E722
+        except:
             font = None
 
     if font:
@@ -414,7 +341,7 @@ def draw_score(screen: pygame.Surface, score_manager: ScoreManager) -> None:
         pygame.draw.rect(screen, constants.BLACK, (20, 20, 100, 30))
 
 
-def check_collisions(bird: Bird, pipe_manager: PipeManager) -> bool:
+def check_collisions(bird: bird.Bird, pipe_manager: PipeManager) -> bool:
     """
     Check for collisions between the bird and any pipes.
 
@@ -429,7 +356,7 @@ def check_collisions(bird: Bird, pipe_manager: PipeManager) -> bool:
     pipe_sprites = pipe_manager.get_all_pipe_sprites()
 
     # Check for collision using pygame's sprite collision detection
-    if pygame.sprite.spritecollideany(bird, pipe_sprites):
+    if pygame.sprite.spritecollideany(bird, pygame.sprite.Group(pipe_sprites)):
         return True
 
     return False
@@ -444,7 +371,7 @@ def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> 
         score_manager (ScoreManager): The score manager containing final score.
     """
     # Semi-transparent overlay to dim the background but keep consistency in button style
-    overlay = pygame.Surface((SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+    overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
     overlay.set_alpha(128)
     overlay.fill(constants.BLACK)
     screen.blit(overlay, (0, 0))
@@ -464,43 +391,60 @@ def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> 
             font = None
 
     if font:
-        game_over_text = font.render("GAME OVER", True, RED)
+        game_over_text = font.render("GAME OVER", True, constants.RED)
         text_rect = game_over_text.get_rect(
-            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 150)
+            center=(constants.SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 150)
         )
         screen.blit(game_over_text, text_rect)
 
         # Final score text
-        score_text = font.render(f"Final Score: {score_manager.score}", True, WHITE)
+        score_text = font.render(
+            f"Final Score: {score_manager.score}", True, constants.WHITE
+        )
         score_rect = score_text.get_rect(
-            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 80)
+            center=(constants.SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 80)
         )
         screen.blit(score_text, score_rect)
 
         # High score text
         high_score_text = font.render(
-            f"High Score: {score_manager.high_score}", True, WHITE
+            f"High Score: {score_manager.high_score}", True, constants.WHITE
         )
         high_score_rect = high_score_text.get_rect(
-            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 20)
+            center=(constants.SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 20)
         )
         screen.blit(high_score_text, high_score_rect)
     else:
         # Draw simple text using basic shapes if font fails
         pygame.draw.rect(
             screen,
-            RED,
-            (SCREEN_WIDTH // 2 - 150, constants.SCREEN_HEIGHT // 2 - 200, 300, 50),
+            constants.RED,
+            (
+                constants.SCREEN_WIDTH // 2 - 150,
+                constants.SCREEN_HEIGHT // 2 - 200,
+                300,
+                50,
+            ),
         )
         pygame.draw.rect(
             screen,
-            WHITE,
-            (SCREEN_WIDTH // 2 - 150, constants.SCREEN_HEIGHT // 2 - 130, 300, 50),
+            constants.WHITE,
+            (
+                constants.SCREEN_WIDTH // 2 - 150,
+                constants.SCREEN_HEIGHT // 2 - 130,
+                300,
+                50,
+            ),
         )
         pygame.draw.rect(
             screen,
-            WHITE,
-            (SCREEN_WIDTH // 2 - 150, constants.SCREEN_HEIGHT // 2 - 70, 300, 50),
+            constants.WHITE,
+            (
+                constants.SCREEN_WIDTH // 2 - 150,
+                constants.SCREEN_HEIGHT // 2 - 70,
+                300,
+                50,
+            ),
         )
 
     # Buttons (consistent with main menu style)
@@ -508,10 +452,10 @@ def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> 
     mouse_pos = pygame.mouse.get_pos()
 
     for name, rect in buttons.items():
-        is_hovered = rect.collidepoint(mouse_pos)
+        is_hover = rect.collidepoint(mouse_pos)
         base_color = (70, 130, 180)  # steel blue
         hover_color = (100, 149, 237)  # cornflower blue
-        color = hover_color if is_hovered else base_color
+        color = hover_color if is_hover else base_color
         pygame.draw.rect(screen, color, rect, border_radius=8)
 
         # Button text
@@ -525,7 +469,7 @@ def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> 
 
         if btn_font:
             label = "Restart" if name == "restart" else "Exit"
-            text_surf = btn_font.render(label, True, WHITE)
+            text_surf = btn_font.render(label, True, constants.WHITE)
             text_rect = text_surf.get_rect(center=rect.center)
             screen.blit(text_surf, text_rect)
 
@@ -556,21 +500,21 @@ def _get_menu_button_rects() -> dict[str, pygame.Rect]:
     Returns:
         dict[str, pygame.Rect]: Mapping of button name to its rectangle.
     """
-    center_x: int = SCREEN_WIDTH // 2
-    start_y: int = constants.SCREEN_HEIGHT // 2 - BUTTON_HEIGHT // 2
-    total_height: int = BUTTON_HEIGHT * 2 + BUTTON_SPACING
+    center_x: int = constants.SCREEN_WIDTH // 2
+    start_y: int = constants.SCREEN_HEIGHT // 2 - constants.BUTTON_HEIGHT // 2
+    total_height: int = constants.BUTTON_HEIGHT * 2 + constants.BUTTON_SPACING
     origin_y: int = constants.SCREEN_HEIGHT // 2 - total_height // 2
     start_button_rect = pygame.Rect(
-        center_x - BUTTON_WIDTH // 2,
+        center_x - constants.BUTTON_WIDTH // 2,
         origin_y,
-        BUTTON_WIDTH,
-        BUTTON_HEIGHT,
+        constants.BUTTON_WIDTH,
+        constants.BUTTON_HEIGHT,
     )
     exit_button_rect = pygame.Rect(
-        center_x - BUTTON_WIDTH // 2,
-        origin_y + BUTTON_HEIGHT + BUTTON_SPACING,
-        BUTTON_WIDTH,
-        BUTTON_HEIGHT,
+        center_x - constants.BUTTON_WIDTH // 2,
+        origin_y + constants.BUTTON_HEIGHT + constants.BUTTON_SPACING,
+        constants.BUTTON_WIDTH,
+        constants.BUTTON_HEIGHT,
     )
     return {"start": start_button_rect, "exit": exit_button_rect}
 
@@ -594,7 +538,7 @@ def draw_main_menu(screen: pygame.Surface) -> None:
     if title_font:
         title_text = title_font.render("Flappy Bird", True, constants.BLACK)
         title_rect = title_text.get_rect(
-            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 140)
+            center=(constants.SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 140)
         )
         screen.blit(title_text, title_rect)
 
@@ -603,10 +547,10 @@ def draw_main_menu(screen: pygame.Surface) -> None:
     mouse_pos = pygame.mouse.get_pos()
 
     for name, rect in buttons.items():
-        is_hovered = rect.collidepoint(mouse_pos)
+        is_hover = rect.collidepoint(mouse_pos)
         base_color = (70, 130, 180)  # steel blue
         hover_color = (100, 149, 237)  # cornflower blue
-        color = hover_color if is_hovered else base_color
+        color = hover_color if is_hover else base_color
         pygame.draw.rect(screen, color, rect, border_radius=8)
 
         # Button text
@@ -620,29 +564,29 @@ def draw_main_menu(screen: pygame.Surface) -> None:
 
         if btn_font:
             label = "Start" if name == "start" else "Exit"
-            text_surf = btn_font.render(label, True, WHITE)
+            text_surf = btn_font.render(label, True, constants.WHITE)
             text_rect = text_surf.get_rect(center=rect.center)
             screen.blit(text_surf, text_rect)
 
 
 def _get_confirm_exit_button_rects() -> dict[str, pygame.Rect]:
-    center_x: int = SCREEN_WIDTH // 2
+    center_x: int = constants.SCREEN_WIDTH // 2
     origin_y: int = constants.SCREEN_HEIGHT // 2 + 30
     yes_rect = pygame.Rect(
-        center_x - BUTTON_WIDTH - BUTTON_SPACING // 2,
+        center_x - constants.BUTTON_WIDTH - constants.BUTTON_SPACING // 2,
         origin_y,
-        BUTTON_WIDTH,
-        BUTTON_HEIGHT,
+        constants.BUTTON_WIDTH,
+        constants.BUTTON_HEIGHT,
     )
     no_rect = pygame.Rect(
-        center_x + BUTTON_SPACING // 2, origin_y, BUTTON_WIDTH, BUTTON_HEIGHT
+        center_x + constants.BUTTON_SPACING // 2, origin_y, constants.BUTTON_WIDTH, constants.BUTTON_HEIGHT
     )
     return {"yes": yes_rect, "no": no_rect}
 
 
 def draw_confirm_exit(screen: pygame.Surface) -> None:
     # modal overlay
-    modal = pygame.Surface((SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+    modal = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
     modal.set_alpha(180)
     modal.fill((0, 0, 0))
     screen.blit(modal, (0, 0))
@@ -660,19 +604,19 @@ def draw_confirm_exit(screen: pygame.Surface) -> None:
 
     if title_font:
         msg = "Are you sure you want to exit?"
-        title_text = title_font.render(msg, True, WHITE)
+        title_text = title_font.render(msg, True, constants.WHITE)
         title_rect = title_text.get_rect(
-            center=(SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 40)
+            center=(constants.SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 40)
         )
         screen.blit(title_text, title_rect)
 
     buttons = _get_confirm_exit_button_rects()
     mouse_pos = pygame.mouse.get_pos()
     for name, rect in buttons.items():
-        is_hovered = rect.collidepoint(mouse_pos)
+        is_hover = rect.collidepoint(mouse_pos)
         base_color = (178, 34, 34) if name == "yes" else (70, 130, 180)
         hover_color = (220, 20, 60) if name == "yes" else (100, 149, 237)
-        color = hover_color if is_hovered else base_color
+        color = hover_color if is_hover else base_color
         pygame.draw.rect(screen, color, rect, border_radius=8)
 
         try:
@@ -684,7 +628,7 @@ def draw_confirm_exit(screen: pygame.Surface) -> None:
                 btn_font = None
         if btn_font:
             label = "Yes" if name == "yes" else "No"
-            text_surf = btn_font.render(label, True, WHITE)
+            text_surf = btn_font.render(label, True, constants.WHITE)
             text_rect = text_surf.get_rect(center=rect.center)
             screen.blit(text_surf, text_rect)
 
@@ -715,20 +659,20 @@ def _get_game_over_button_rects() -> dict[str, pygame.Rect]:
     """
     Compute rectangles for Game Over buttons (Restart, Exit) with same style as main menu.
     """
-    center_x: int = SCREEN_WIDTH // 2
+    center_x: int = constants.SCREEN_WIDTH // 2
     # Place buttons below the score block
     origin_y: int = constants.SCREEN_HEIGHT // 2 + 30
     restart_rect = pygame.Rect(
-        center_x - BUTTON_WIDTH // 2,
+        center_x - constants.BUTTON_WIDTH // 2,
         origin_y,
-        BUTTON_WIDTH,
-        BUTTON_HEIGHT,
+        constants.BUTTON_WIDTH,
+        constants.BUTTON_HEIGHT,
     )
     exit_rect = pygame.Rect(
-        center_x - BUTTON_WIDTH // 2,
-        origin_y + BUTTON_HEIGHT + BUTTON_SPACING,
-        BUTTON_WIDTH,
-        BUTTON_HEIGHT,
+        center_x - constants.BUTTON_WIDTH // 2,
+        origin_y + constants.BUTTON_HEIGHT + constants.BUTTON_SPACING,
+        constants.BUTTON_WIDTH,
+        constants.BUTTON_HEIGHT,
     )
     return {"restart": restart_rect, "exit": exit_rect}
 
@@ -773,7 +717,7 @@ def handle_confirm_exit_input(events: list[pygame.event.Event]) -> str:
 
 
 def reset_game(
-    bird: Bird, pipe_manager: PipeManager, score_manager: ScoreManager
+    bird: "bird.Bird", pipe_manager: PipeManager, score_manager: ScoreManager
 ) -> None:
     """
     Reset the game to initial state.
@@ -784,11 +728,7 @@ def reset_game(
         score_manager (ScoreManager): The score manager to reset.
     """
     # Reset bird position and velocity
-    bird.__x = 70
-    bird.__y = 90
-    bird.__velocity = 0.0
-    bird.rect.x = 70
-    bird.rect.y = 90
+    bird.reset(70, 90)
 
     # Reset pipe manager using its reset method
     pipe_manager.reset()
@@ -816,7 +756,7 @@ def draw_window(
         score_manager (ScoreManager): Score manager for displaying score.
     """
     # Fill the screen with background
-    screen.fill(WHITE)
+    screen.fill(constants.WHITE)
 
     # Main menu draws its own UI; skip game world drawing
     if game_state == GameState.MENU:
@@ -851,7 +791,7 @@ def handle_events(events: list[pygame.event.Event]) -> bool:
     Process a batch of Pygame events (including quit events).
 
     Iterates through the received events; returns False to terminate the game loop
-    if a QUIT event is encountered, otherwise returns True to continue.
+    if a QUIT event is encounteconstants.RED, otherwise returns True to continue.
 
     Args:
         events (list[pygame.event.Event]): Events to process.
@@ -903,7 +843,7 @@ def main() -> None:
     running: bool = True
 
     screen: pygame.Surface = pygame.display.set_mode(
-        [SCREEN_WIDTH, constants.SCREEN_HEIGHT]
+        [constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT]
     )
     pygame.display.set_caption("Flappy Bird")
 
@@ -927,7 +867,7 @@ def main() -> None:
 
     # Initialize Bird object
     global bird
-    bird = Bird(70, 90, bird_surface)
+    bird = bird.Bird(70, 90, bird_surface)
 
     # Game state
     game_state = GameState.MENU
@@ -938,7 +878,7 @@ def main() -> None:
     # Game loop
     while running:
         # Set the FPS to 60
-        clock.tick(FPS)
+        clock.tick(constants.FPS)
 
         # Get events
         events: list[pygame.event.Event] = pygame.event.get()
@@ -1012,7 +952,6 @@ def main() -> None:
         # Draw window
         draw_window(screen, pipe_manager, game_state, score_manager)
 
-    # Look at the name
     pygame.display.quit()
 
 
