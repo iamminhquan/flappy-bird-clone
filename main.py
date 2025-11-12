@@ -31,13 +31,7 @@ def draw_score(screen: pygame.Surface, score_manager: ScoreManager) -> None:
     if not pygame.font.get_init():
         pygame.font.init()
 
-    try:
-        font = pygame.font.SysFont("arial", 36)
-    except:
-        try:
-            font = pygame.font.Font(None, 36)
-        except:
-            font = None
+    font = _get_font("arial", 36)
 
     if font:
         score_text = font.render(f"Score: {score_manager.score}", True, constants.BLACK)
@@ -47,92 +41,109 @@ def draw_score(screen: pygame.Surface, score_manager: ScoreManager) -> None:
         pygame.draw.rect(screen, constants.BLACK, (20, 20, 100, 30))
 
 
-def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> None:
+def _get_font(font_name: str, size: int) -> pygame.font.Font | None:
     """
-    Draw the game over menu with restart and exit options.
+    Get a font object with fallback options.
+
+    Args:
+        font_name: Name of the font (e.g., "arial") or None for default.
+        size: Font size in pixels.
+
+    Returns:
+        pygame.font.Font object or None if all attempts fail.
+    """
+    if not pygame.font.get_init():
+        pygame.font.init()
+
+    try:
+        return pygame.font.SysFont(font_name, size)
+    except Exception:
+        pass
+    
+    try:
+        return pygame.font.Font(None, size)
+    except Exception:
+        return None
+
+
+def _draw_game_over_overlay(screen: pygame.Surface) -> None:
+    """
+    Draw a semi-transparent overlay to dim the background.
 
     Args:
         screen (pygame.Surface): The main display surface.
-        score_manager (ScoreManager): The score manager containing final score.
+
+    Returns:
+        None
     """
-    # Semi-transparent overlay to dim the background but keep consistency in button style
     overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
     overlay.set_alpha(128)
     overlay.fill(constants.BLACK)
     screen.blit(overlay, (0, 0))
 
-    # Initialize font module if not already done
-    if not pygame.font.get_init():
-        pygame.font.init()
 
-    # Game over text
-    try:
-        font = pygame.font.SysFont("arial", 55)
-    except:
-        try:
-            font = pygame.font.Font(None, 55)
-        except:
-            # Fallback: create a simple text surface without custom font
-            font = None
+def _draw_game_over_texts(screen: pygame.Surface, score_manager: ScoreManager) -> None:
+    """
+    Draw game over text, final score, and high score.
+
+    Args:
+        screen (pygame.Surface): The main display surface.
+        score_manager (ScoreManager): The score manager containing final score.
+
+    Returns:
+        None
+    """
+    font = _get_font("arial", 55)
 
     if font:
+        center_x = constants.SCREEN_WIDTH // 2
+        center_y = constants.SCREEN_HEIGHT // 2
+
         game_over_text = font.render("GAME OVER", True, constants.RED)
-        text_rect = game_over_text.get_rect(
-            center=(constants.SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 150)
-        )
+        text_rect = game_over_text.get_rect(center=(center_x, center_y - 150))
         screen.blit(game_over_text, text_rect)
 
-        # Final score text
         score_text = font.render(
             f"Final Score: {score_manager.score}", True, constants.WHITE
         )
-        score_rect = score_text.get_rect(
-            center=(constants.SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 80)
-        )
+        score_rect = score_text.get_rect(center=(center_x, center_y - 80))
         screen.blit(score_text, score_rect)
 
-        # High score text
         high_score_text = font.render(
             f"High Score: {score_manager.high_score}", True, constants.WHITE
         )
-        high_score_rect = high_score_text.get_rect(
-            center=(constants.SCREEN_WIDTH // 2, constants.SCREEN_HEIGHT // 2 - 20)
-        )
+        high_score_rect = high_score_text.get_rect(center=(center_x, center_y - 20))
         screen.blit(high_score_text, high_score_rect)
     else:
-        # Draw simple text using basic shapes if font fails
+        center_x = constants.SCREEN_WIDTH // 2
+        center_y = constants.SCREEN_HEIGHT // 2
+        rect_width = 300
+        rect_height = 50
+
         pygame.draw.rect(
             screen,
             constants.RED,
-            (
-                constants.SCREEN_WIDTH // 2 - 150,
-                constants.SCREEN_HEIGHT // 2 - 200,
-                300,
-                50,
-            ),
+            (center_x - rect_width // 2, center_y - 200, rect_width, rect_height),
         )
         pygame.draw.rect(
             screen,
             constants.WHITE,
-            (
-                constants.SCREEN_WIDTH // 2 - 150,
-                constants.SCREEN_HEIGHT // 2 - 130,
-                300,
-                50,
-            ),
+            (center_x - rect_width // 2, center_y - 130, rect_width, rect_height),
         )
         pygame.draw.rect(
             screen,
             constants.WHITE,
-            (
-                constants.SCREEN_WIDTH // 2 - 150,
-                constants.SCREEN_HEIGHT // 2 - 70,
-                300,
-                50,
-            ),
+            (center_x - rect_width // 2, center_y - 70, rect_width, rect_height),
         )
 
-    # Buttons (consistent with main menu style)
+
+def _draw_game_over_buttons(screen: pygame.Surface) -> None:
+    """
+    Draw restart and exit buttons with hover effects.
+
+    Args:
+        screen (pygame.Surface): The main display surface.
+    """
     buttons = _get_game_over_button_rects()
     mouse_pos = pygame.mouse.get_pos()
 
@@ -144,19 +155,25 @@ def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> 
         pygame.draw.rect(screen, color, rect, border_radius=8)
 
         # Button text
-        try:
-            btn_font = pygame.font.SysFont("arial", 36)
-        except:
-            try:
-                btn_font = pygame.font.Font(None, 36)
-            except:
-                btn_font = None
-
-        if btn_font:
+        button_font = _get_font("arial", 36)
+        if button_font:
             label = "Restart" if name == "restart" else "Exit"
-            text_surf = btn_font.render(label, True, constants.WHITE)
+            text_surf = button_font.render(label, True, constants.WHITE)
             text_rect = text_surf.get_rect(center=rect.center)
             screen.blit(text_surf, text_rect)
+
+
+def draw_game_over_menu(screen: pygame.Surface, score_manager: ScoreManager) -> None:
+    """
+    Draw the game over menu with restart and exit options.
+
+    Args:
+        screen (pygame.Surface): The main display surface.
+        score_manager (ScoreManager): The score manager containing final score.
+    """
+    _draw_game_over_overlay(screen)
+    _draw_game_over_texts(screen, score_manager)
+    _draw_game_over_buttons(screen)
 
 
 def handle_game_over_input(keys_pressed: pygame.key.ScancodeWrapper) -> str:
@@ -171,9 +188,9 @@ def handle_game_over_input(keys_pressed: pygame.key.ScancodeWrapper) -> str:
     """
     if keys_pressed[pygame.K_r]:
         return "restart"
-    elif keys_pressed[pygame.K_RETURN] or keys_pressed[pygame.K_SPACE]:
+    if keys_pressed[pygame.K_RETURN] or keys_pressed[pygame.K_SPACE]:
         return "restart"
-    elif keys_pressed[pygame.K_ESCAPE]:
+    if keys_pressed[pygame.K_ESCAPE]:
         return "exit"
     return "none"
 
@@ -186,7 +203,6 @@ def _get_menu_button_rects() -> dict[str, pygame.Rect]:
         dict[str, pygame.Rect]: Mapping of button name to its rectangle.
     """
     center_x: int = constants.SCREEN_WIDTH // 2
-    start_y: int = constants.SCREEN_HEIGHT // 2 - constants.BUTTON_HEIGHT // 2
     total_height: int = constants.BUTTON_HEIGHT * 2 + constants.BUTTON_SPACING
     origin_y: int = constants.SCREEN_HEIGHT // 2 - total_height // 2
     start_button_rect = pygame.Rect(
@@ -212,13 +228,7 @@ def draw_main_menu(screen: pygame.Surface) -> None:
     if not pygame.font.get_init():
         pygame.font.init()
 
-    try:
-        title_font = pygame.font.SysFont("arial", 64)
-    except:
-        try:
-            title_font = pygame.font.Font(None, 64)
-        except:
-            title_font = None
+    title_font = _get_font("arial", 64)
 
     if title_font:
         title_text = title_font.render("Flappy Bird", True, constants.BLACK)
@@ -239,17 +249,11 @@ def draw_main_menu(screen: pygame.Surface) -> None:
         pygame.draw.rect(screen, color, rect, border_radius=8)
 
         # Button text
-        try:
-            btn_font = pygame.font.SysFont("arial", 36)
-        except:
-            try:
-                btn_font = pygame.font.Font(None, 36)
-            except:
-                btn_font = None
+        button_font = _get_font("arial", 36)
 
-        if btn_font:
+        if button_font:
             label = "Start" if name == "start" else "Exit"
-            text_surf = btn_font.render(label, True, constants.WHITE)
+            text_surf = button_font.render(label, True, constants.WHITE)
             text_rect = text_surf.get_rect(center=rect.center)
             screen.blit(text_surf, text_rect)
 
@@ -264,7 +268,10 @@ def _get_confirm_exit_button_rects() -> dict[str, pygame.Rect]:
         constants.BUTTON_HEIGHT,
     )
     no_rect = pygame.Rect(
-        center_x + constants.BUTTON_SPACING // 2, origin_y, constants.BUTTON_WIDTH, constants.BUTTON_HEIGHT
+        center_x + constants.BUTTON_SPACING // 2,
+        origin_y,
+        constants.BUTTON_WIDTH,
+        constants.BUTTON_HEIGHT,
     )
     return {"yes": yes_rect, "no": no_rect}
 
@@ -279,13 +286,7 @@ def draw_confirm_exit(screen: pygame.Surface) -> None:
     if not pygame.font.get_init():
         pygame.font.init()
 
-    try:
-        title_font = pygame.font.SysFont("arial", 48)
-    except:
-        try:
-            title_font = pygame.font.Font(None, 48)
-        except:
-            title_font = None
+    title_font = _get_font("arial", 48)
 
     if title_font:
         msg = "Are you sure you want to exit?"
@@ -304,16 +305,10 @@ def draw_confirm_exit(screen: pygame.Surface) -> None:
         color = hover_color if is_hover else base_color
         pygame.draw.rect(screen, color, rect, border_radius=8)
 
-        try:
-            btn_font = pygame.font.SysFont("arial", 36)
-        except:
-            try:
-                btn_font = pygame.font.Font(None, 36)
-            except:
-                btn_font = None
-        if btn_font:
+        button_font = _get_font("arial", 36)
+        if button_font:
             label = "Yes" if name == "yes" else "No"
-            text_surf = btn_font.render(label, True, constants.WHITE)
+            text_surf = button_font.render(label, True, constants.WHITE)
             text_rect = text_surf.get_rect(center=rect.center)
             screen.blit(text_surf, text_rect)
 
@@ -431,14 +426,12 @@ def draw_window(
     pygame.display.flip()
 
 
-
 def handle_events(events: list[pygame.event.Event]) -> bool:
     """Return False if a QUIT event is processed."""
     for event in events:
         if event.type == pygame.QUIT:
             return False
     return True
-
 
 
 def handle_keys_pressed_events(keys_pressed: pygame.key.ScancodeWrapper) -> None:
